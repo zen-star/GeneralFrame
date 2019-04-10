@@ -49,10 +49,14 @@ if C.DATASET_NAME == 'coco':
     C.DATA_DIR = '/data/dataset/coco/'    # dataset dir TODO: maybe split it into train/val dirs
     C.NUM_CLASS = 2
     C.NUM_IN_CHANNELS = 3
+    C.IMG_MEAN = (0.485, 0.456, 0.406)
+    C.IMG_STD = (0.229, 0.224, 0.225)
 elif C.DATASET_NAME == 'HikHandArm':
     C.DATA_DIR = '/data/project_data/'
     C.NUM_CLASS = 3
     C.NUM_IN_CHANNELS = 3
+    C.IMG_MEAN = (0.485, 0.456, 0.406)
+    C.IMG_STD = (0.229, 0.224, 0.225)
 else:
     raise NotImplementedError
 
