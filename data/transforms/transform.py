@@ -10,22 +10,61 @@ import math
 # --------------------------------------------------------------------------------------------------------------
 # The following methods are all has dict input/output
 # e.g.
-# sample['imgage'] = raw RGB input image
-# sample['seg_label'] = groun_truth_semantic_segmentation_image (values in [0,1,2,...,n_classes])
-# sample['inst_label'] = ground_truth_instance_image_list[inst_img1,inst_img2,...,inst_imgX] (values in [0,1])
+# sample['image'] = raw 'RGB' PIL.Image
+# sample['seg_label'] = gt_semantic_segmentation_images numpy.arrays (values in [0,1,2,...,n_classes])
+# sample['inst_label'] = gt_instance_image_list[inst_img1,inst_img2,...,inst_imgX] numpy.arrays (values in [0,1])
+#
+# Note: PIL.Image: w,h;    numpy image: h,w,c;    torch image: c,h,w
 # --------------------------------------------------------------------------------------------------------------
 
 
 class Normalize(object):
     """
-    Normalize a
+    Normalize
     """
+    def __init__(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, sample):
+        img = sample['image']  # PIL.Image -> numpy.arrays
+        mask = sample['seg_label']  # not changed
+        inst = sample['inst_label']  # not changed
+
+        img = np.array(img).astype(np.float32)
+        img /= 255.0
+        img -= self.mean
+        img /= self.std
+
+        return {
+            'image': img,
+            'mask': mask,
+            'inst': inst
+        }
 
 
 class ToTensor(object):
     """
-    Convert numpy.array to
+    Convert PIL.image/numpy.array to torch.FloatTensor
+    Not for sample['inst_label'], remaining numpy.arrays
+    Always the last step of transformation.
     """
+    def __call__(self, sample):
+        img = sample['image']  # numpy.arrays -> torch.FloatTensor
+        mask = sample['seg_label']  # numpy.arrays -> torch.FloatTensor
+        inst = sample['inst_label']  # not changed
+
+        img = np.array(img).astype(np.float32).transpose((2, 0, 1))
+        mask = np.array(mask).astype(np.float32)
+
+        img = torch.from_numpy(img).float()
+        mask = torch.from_numpy(mask).float()
+
+        return {
+            'image': img,
+            'seg_label': mask,
+            'inst_label': inst
+        }
 
 
 class RandomErasing(object):
