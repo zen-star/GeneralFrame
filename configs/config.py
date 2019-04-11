@@ -46,7 +46,7 @@ Dataset
 """
 C.DATASET_NAME = 'coco'
 if C.DATASET_NAME == 'coco':
-    C.DATA_DIR = '/data/dataset/coco/'    # dataset dir TODO: maybe split it into train/val dirs
+    C.DATA_DIR = '/data/datasets/coco/'    # datasets dir TODO: maybe split it into train/val dirs
     C.NUM_CLASS = 2
     C.NUM_IN_CHANNELS = 3
     C.IMG_MEAN = (0.485, 0.456, 0.406)

@@ -9,7 +9,7 @@ import numpy as np
 
 class BaseDataset(object):
     """
-    Base class of image dataset
+    Base class of image datasets
     """
 
     def get_imagedata_info(self, data):
@@ -45,7 +45,7 @@ class BaseDataset(object):
 
 class BaseImageDataset(BaseDataset):
     """
-    Base class of image reid dataset
+    Base class of image reid datasets
     """
 
     def print_dataset_statistics(self, train, query, gallery):
@@ -65,7 +65,7 @@ class BaseImageDataset(BaseDataset):
 
 class BaseVideoDataset(BaseDataset):
     """
-    Base class of video reid dataset
+    Base class of video reid datasets
     """
 
     def print_dataset_statistics(self, train, query, gallery):
