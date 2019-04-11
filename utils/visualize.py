@@ -5,16 +5,6 @@
 """
 import numpy as np
 from PIL import Image
-from configs.config import config
-
-
-def gen_mask_tensor2pil(semantic_score_map):
-    """
-    from semantic score map to mask for visualization
-    :param semantic_score_map: torch.Tensor, model output semantic score map(after softmax), C,H,W
-    :return: PIL.Image,
-    """
-
 
 
 def make_palette_27(num_classes):
