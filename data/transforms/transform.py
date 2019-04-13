@@ -84,9 +84,9 @@ class RandomFlip(object):
             img = img.transpose(self.method)
             mask = Image.fromarray(mask.astype(np.uint8), mode='L').transpose(self.method)
             mask = np.array(mask)
+            inst2 = []
             for i in range(len(inst)):
-                inst[i] = Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(self.method)
-                inst[i] = np.array(inst[i])
+                inst2.append(np.array(Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(self.method)))
 
         return {
             'image': img,
@@ -213,8 +213,8 @@ class RandomCrop(object):
         }
 
 
-class RandomResizeCrop(object):
-    raise NotImplementedError
+# class RandomResizeCrop(object):
+#     raise NotImplementedError
 
 
 class RandomErasing(object):
@@ -319,14 +319,12 @@ class ColorJitter(object):
             if len(var) > 3:
                 trans.append(var)
         # trans = ['Brightness', 'Contrast', 'Color']
-
         random.shuffle(trans)
         for one in trans:
-            if one is not None:
-                one_factor = random.uniform(getattr(one, ))
+            if var_dict[one] is not None:
+                one_factor = random.uniform(var_dict[one][0], var_dict[one][1])
                 enhancer = getattr(ImageEnhance, one)(img)
                 img = enhancer.enhance(one_factor)
-
         return img
 
     def __call__(self, img):
@@ -355,10 +353,10 @@ if __name__ == '__main__':
         # Resize(1024),
         RandomFlip(0.8, Image.FLIP_LEFT_RIGHT),
         RandomFlip(0.8, Image.FLIP_TOP_BOTTOM),
-        ColorJitter(brightness=10, contrast=10, saturation=10),
+        ColorJitter(brightness=2, contrast=0, saturation=0),
         Random90Rotate(0.8, 0.8),
         RandomErasing(probability=0.8),
-        Pad(50),
+        Pad(10),
         RandomCrop((512, 512)),
     ])
     # prepare test sample: img, mask, insts
