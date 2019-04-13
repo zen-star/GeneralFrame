@@ -3,6 +3,9 @@
 @author: Zheng Shida
 @contact: luckyzsd@163.com
 """
+import torch
+import torchvision.transforms as T
+import torch.nn.functional as F
 from PIL import Image
 import numpy as np
 import random
@@ -12,12 +15,13 @@ import math
 # e.g.
 # sample['image'] = raw 'RGB' PIL.Image
 # sample['seg_label'] = gt_semantic_segmentation_images numpy.arrays (values in [0,1,2,...,n_classes])
-# sample['inst_label'] = gt_instance_image_list[inst_img1,inst_img2,...,inst_imgX] numpy.arrays (values in [0,1])
+# sample['inst_label'] = gt_instance_image_list[inst_img1,inst_img2,...,inst_imgX] list.numpy.arrays (values in [0,1])
 #
 # Note: PIL.Image: w,h;    numpy image: h,w,c;    torch image: c,h,w
 # --------------------------------------------------------------------------------------------------------------
 
-__all__ = ['Normalize', 'ToTensor', 'RandomHorizonFlip', 'RandomErasing', 'RandomVerticalFlip', 'Random90Rotate']
+__all__ = ['Normalize', 'ToTensor', 'RandomFlip', 'RandomErasing', 'Random90Rotate',
+           'Resize']
 
 
 class Normalize(object):
@@ -66,9 +70,10 @@ class ToTensor(object):
         }
 
 
-class RandomHorizonFlip(object):
-    def __init__(self, prob=0.5):
+class RandomFlip(object):
+    def __init__(self, prob=0.5, method=Image.FLIP_LEFT_RIGHT):
         self.prob = prob
+        self.method = method
 
     def __call__(self, sample):
         img = sample['image']  # PIL.Image
@@ -77,34 +82,10 @@ class RandomHorizonFlip(object):
 
         if random.random() < self.prob:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
-            mask = Image.fromarray(mask.astype(np.uint8), mode='L').transpose(Image.FLIP_LEFT_RIGHT)
+            mask = Image.fromarray(mask.astype(np.uint8), mode='L').transpose(self.method)
             mask = np.array(mask)
             for i in range(len(inst)):
-                inst[i] = Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(Image.FLIP_LEFT_RIGHT)
-                inst[i] = np.array(inst[i])
-
-        return {
-            'image': img,
-            'seg_label': mask,
-            'inst_label': inst
-        }
-
-
-class RandomVerticalFlip(object):
-    def __init__(self, prob=0.5):
-        self.prob = prob
-
-    def __call__(self, sample):
-        img = sample['image']  # PIL.Image
-        mask = sample['seg_label']  # numpy.arrays(uint8)
-        inst = sample['inst_label']
-
-        if random.random() < self.prob:
-            img = img.transpose(Image.FLIP_TOP_BOTTOM)
-            mask = Image.fromarray(mask.astype(np.uint8), mode='L').transpose(Image.FLIP_TOP_BOTTOM)
-            mask = np.array(mask)
-            for i in range(len(inst)):
-                inst[i] = Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(Image.FLIP_TOP_BOTTOM)
+                inst[i] = Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(self.method)
                 inst[i] = np.array(inst[i])
 
         return {
@@ -130,10 +111,12 @@ class Random90Rotate(object):
                 img = img.transpose(method)
                 mask = Image.fromarray(mask.astype(np.uint8), mode='L').transpose(method)
                 mask = np.array(mask)
-                inst2 = []
-                for i in range(len(inst)):
-                    inst2[i] = Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(method)
-                    inst2[i] = np.array(inst2[i])
+                inst2 = np.expand_dims(
+                    np.array(Image.fromarray(inst[0].astype(np.uint8), mode='L').transpose(method)), 0)
+                for i in range(1, len(inst)):
+                    inst2 = np.concatenate(
+                        (inst2, np.expand_dims(np.array(Image.fromarray(inst[i].astype(np.uint8), mode='L')
+                                                        .transpose(method)), 0)), 0)
                 return img, mask, inst2
 
             if random.random() < self.rol_prob:
@@ -147,6 +130,35 @@ class Random90Rotate(object):
             'inst_label': inst
         }
 
+
+class Resize(object):
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        self.size = size
+        self.interpolation = interpolation
+        self.resize = T.Resize(self.size, self.interpolation)
+
+    def __call__(self, sample):
+        img = sample['image']  # PIL.Image
+        mask = sample['seg_label']  # numpy.arrays(uint8)
+        inst = sample['inst_label']
+
+        img = self.resize(img)
+        mask = self.resize(Image.fromarray(mask.astype(np.uint8), mode='L'))
+        mask = np.array(mask)
+        inst2 = []
+        for i in range(len(inst)):
+            def _resize_np(instx):
+                np.array(self.resize(Image.fromarray(instx.astype(np.uint8), mode='L')))
+                return instx
+            inst2.append(_resize_np(inst[i]))
+        return {
+            'image': img,
+            'seg_label': mask,
+            'inst_label': inst
+        }
+
+
+class Pad(object):
 
 class RandomErasing(object):
     """ Randomly selects a rectangle region in an image and erases its pixels.
@@ -237,18 +249,9 @@ if __name__ == '__main__':
     else:
         after_sample = sample
 
-    if 2 in test_id_list:
-        # test for random horizon flip
-        test_random_hflip = RandomHorizonFlip(0.9)
-        after_sample = test_random_hflip(after_sample)
-        after_sample['image'].show(title='img_after')
-        Image.fromarray(after_sample['seg_label'], mode='L').point(lambda i: i < 1 and 255).show(title='seg_after')
-        Image.fromarray(after_sample['inst_label'][0], mode='L').point(lambda i: i < 1 and 255).show(title='inst_after')
-        Image.fromarray(after_sample['inst_label'][1], mode='L').point(lambda i: i < 1 and 255).show(title='inst_after')
-
     if 4 in test_id_list:
         # test for random horizon flip
-        test_random_vflip = RandomVerticalFlip(0.9)
+        test_random_vflip = RandomFlip(0.9, Image.FLIP_TOP_BOTTOM)
         after_sample = test_random_vflip(after_sample)
         after_sample['image'].show(title='img_after')
         Image.fromarray(after_sample['seg_label'], mode='L').point(lambda i: i < 1 and 255).show(title='seg_after')
@@ -259,6 +262,17 @@ if __name__ == '__main__':
         # test for random horizon flip
         test_random_90 = Random90Rotate(0.9)
         after_sample = test_random_90(after_sample)
+        after_sample['image'].show(title='img_after')
+        Image.fromarray(after_sample['seg_label'], mode='L').point(lambda i: i < 1 and 255).show(title='seg_after')
+        Image.fromarray(after_sample['inst_label'][0], mode='L').point(lambda i: i < 1 and 255).show(title='inst_after')
+        Image.fromarray(after_sample['inst_label'][1], mode='L').point(lambda i: i < 1 and 255).show(title='inst_after')
+
+    if 6 in test_id_list:
+        # test for Resize
+        test_resize = Resize(512)
+        print(after_sample['image'].size)
+        after_sample = test_resize(after_sample)
+        print(after_sample['image'].size)
         after_sample['image'].show(title='img_after')
         Image.fromarray(after_sample['seg_label'], mode='L').point(lambda i: i < 1 and 255).show(title='seg_after')
         Image.fromarray(after_sample['inst_label'][0], mode='L').point(lambda i: i < 1 and 255).show(title='inst_after')
