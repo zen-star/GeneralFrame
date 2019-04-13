@@ -29,6 +29,9 @@ For Model
 C.PRETRAINED_NAME = 'ImageNet'  # or some others
 C.PRETRAINED_PATH = C.ROOT_DIR + 'pretrained_model/resnet501.pth'  # TODO: add resnet501 into pretrained_model
 C.MODEL_NAME = 'BBE'  # for switching main networks with similar framework codes
+C.SIZE_TRAIN = 512
+C.SIZE_TEST = 512
+
 
 """
 Hyper parameter
@@ -44,6 +47,7 @@ C.VAL_BATCH_SIZE = 1
 """
 Dataset
 """
+C.SUPPORT_DATASET = ('coco', 'HikHandArm')
 C.DATASET_NAME = 'coco'
 if C.DATASET_NAME == 'coco':
     C.DATA_DIR = '/data/datasets/coco/'    # datasets dir TODO: maybe split it into train/val dirs
@@ -59,7 +63,8 @@ elif C.DATASET_NAME == 'HikHandArm':
     C.IMG_STD = (0.229, 0.224, 0.225)
 else:
     raise NotImplementedError
-
+C.FLIP_PROB = 0.5
+C.PAD_SIZE = 10
 
 """
 Training
