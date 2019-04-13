@@ -15,7 +15,7 @@ import math
 # e.g.
 # sample['image'] = raw 'RGB' PIL.Image
 # sample['seg_label'] = gt_semantic_segmentation_images numpy.arrays (values in [0,1,2,...,n_classes])
-# sample['inst_label'] = gt_instance_image_list[inst_img1,inst_img2,...,inst_imgX] list.numpy.arrays (values in [0,1])
+# sample['inst_label'] = gt_instance_image_list[inst_img1,inst_img2,...,inst_imgX] list[numpy.arrays] (values in [0,1])
 #
 # Note: PIL.Image: w,h;    numpy image: h,w,c;    torch image: c,h,w
 # --------------------------------------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ class Normalize(object):
 class ToTensor(object):
     """
     Convert PIL.image/numpy.array to torch.FloatTensor
-    Not for sample['inst_label'], remaining numpy.arrays
+    Not for sample['inst_label'], remaining list[numpy.arrays]
     Always the last step of transformation.
     """
     def __call__(self, sample):
@@ -111,12 +111,9 @@ class Random90Rotate(object):
                 img = img.transpose(method)
                 mask = Image.fromarray(mask.astype(np.uint8), mode='L').transpose(method)
                 mask = np.array(mask)
-                inst2 = np.expand_dims(
-                    np.array(Image.fromarray(inst[0].astype(np.uint8), mode='L').transpose(method)), 0)
-                for i in range(1, len(inst)):
-                    inst2 = np.concatenate(
-                        (inst2, np.expand_dims(np.array(Image.fromarray(inst[i].astype(np.uint8), mode='L')
-                                                        .transpose(method)), 0)), 0)
+                inst2 = []
+                for i in range(len(inst)):
+                    inst2.append(np.array(Image.fromarray(inst[i].astype(np.uint8), mode='L').transpose(method)))
                 return img, mask, inst2
 
             if random.random() < self.rol_prob:
@@ -159,6 +156,38 @@ class Resize(object):
 
 
 class Pad(object):
+    def __init__(self, size, mean=(0.4914, 0.4822, 0.4465)):
+        self.size = ((size, size), (size, size))
+        self.fill = tuple([int(round(i*255)) for i in mean])
+        self.pad = T.Pad(size, fill=self.fill)
+
+    def __call__(self, sample):
+        img = sample['image']  # PIL.Image
+        mask = sample['seg_label']  # numpy.arrays(uint8)
+        inst = sample['inst_label']
+
+        img = self.pad(img)
+        mask = np.pad(mask, self.size, 'constant')
+        for i in range(len(inst)):
+            inst[i] = np.pad(inst[i], self.size, 'constant')
+        return {
+            'image': img,
+            'seg_label': mask,
+            'inst_label': inst
+        }
+
+
+class RandomCrop(object):
+    pass
+
+
+class RandomResizeCrop(object):
+    pass
+
+
+class ColorJitter(object):
+    pass
+
 
 class RandomErasing(object):
     """ Randomly selects a rectangle region in an image and erases its pixels.
@@ -231,7 +260,8 @@ if __name__ == '__main__':
     mask2 = test_img.getchannel(0).point(lambda i: 100 <= i < 200 and 255)
     # mask2.show(title='inst2_before')
     mask2 = np.array(mask2)
-    insts = np.concatenate((np.expand_dims(mask1, 0), np.expand_dims(mask2, 0)), 0)
+    # insts = np.concatenate((np.expand_dims(mask1, 0), np.expand_dims(mask2, 0)), 0)
+    insts = [mask1, mask2]
     sample = {
         'image': test_img,
         'seg_label': mask,
