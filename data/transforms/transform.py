@@ -353,7 +353,7 @@ if __name__ == '__main__':
         # Resize(1024),
         RandomFlip(0.8, Image.FLIP_LEFT_RIGHT),
         RandomFlip(0.8, Image.FLIP_TOP_BOTTOM),
-        ColorJitter(brightness=2, contrast=0, saturation=0),
+        ColorJitter(brightness=(0.25, 1.75), contrast=(0.25, 1.75), saturation=(0.75, 1.25)),
         Random90Rotate(0.8, 0.8),
         RandomErasing(probability=0.8),
         Pad(10),
