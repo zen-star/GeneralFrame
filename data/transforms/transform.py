@@ -6,7 +6,7 @@
 
 import torch
 import torchvision.transforms as T
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 import random
 import math
@@ -189,7 +189,7 @@ class RandomCrop(object):
         """
         w, h = img.size
         th, tw = output_size
-        if w == tw and h == th:
+        if w <= tw and h <= th:
             return 0, 0, h, w
 
         i = random.randint(0, h - th)
@@ -200,13 +200,16 @@ class RandomCrop(object):
         img = sample['image']  # PIL.Image
         mask = sample['seg_label']  # numpy.arrays(uint8)
         inst = sample['inst_label']
-
+        print('in random crop:')
+        print(img.size)
+        print(mask.shape)
+        print(inst[0].shape)
         i, j, h, w = self.get_params(img, self.size)
 
-        img = img.crop((i, j, i+h, j+w))
-        mask = mask[j:j+w, i:i+h]
+        img = img.crop((j, i, j+w, i+h))  # (left, upper, right, lower)
+        mask = mask[i:i+h, j:j+w]
         for ii in range(len(inst)):
-            inst[ii] = inst[ii][j:j+w, i:i+h]
+            inst[ii] = inst[ii][i:i+h, j:j+w]
         return {
             'image': img,
             'seg_label': mask,
@@ -214,8 +217,21 @@ class RandomCrop(object):
         }
 
 
-# class RandomResizeCrop(object):
-#     raise NotImplementedError
+class RandomGaussBlur(object):
+    def __init__(self, blur=5):
+        self.blur = random.randint(0, blur)
+
+    def __call__(self, sample):
+        img = sample['image']  # PIL.Image
+        mask = sample['seg_label']  # numpy.arrays(uint8)
+        inst = sample['inst_label']
+        img = img.filter(ImageFilter.GaussianBlur(self.blur))
+
+        return {
+            'image': img,
+            'seg_label': mask,
+            'inst_label': inst
+        }
 
 
 class RandomErasing(object):
@@ -229,7 +245,7 @@ class RandomErasing(object):
          r1: Minimum aspect ratio of erased area.
          mean: Erasing value.
     """
-    def __init__(self, probability=0.5, sl=0.02, sh=0.2, r1=0.3, mean=(0.4914, 0.4822, 0.4465)):
+    def __init__(self, probability=0.5, sl=0.02, sh=0.1, r1=0.3, mean=(0.4914, 0.4822, 0.4465)):
         self.probability = probability
         self.mean = [int(round(i*255)) for i in mean]
         self.sl = sl
@@ -351,13 +367,14 @@ if __name__ == '__main__':
 
     # selectively comment not-for-test methods
     transform_test = T.Compose([
-        # Resize(1024),
+        Resize(512),
         RandomFlip(0.8, Image.FLIP_LEFT_RIGHT),
         RandomFlip(0.8, Image.FLIP_TOP_BOTTOM),
-        ColorJitter(brightness=(0.25, 1.75), contrast=(0.25, 1.75), saturation=(0.75, 1.25)),
+        RandomGaussBlur(10),
+        ColorJitter(brightness=(0.25, 1.5), contrast=(0.5, 1.5), saturation=(0.75, 1.25)),
         Random90Rotate(0.8, 0.8),
         RandomErasing(probability=0.8),
-        Pad(10),
+        RandomPad(15),
         RandomCrop((512, 512)),
     ])
     # prepare test sample: img, mask, insts
