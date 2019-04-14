@@ -20,7 +20,7 @@ import math
 # Note: PIL.Image: w,h;    numpy image: h,w,c;    torch image: c,h,w
 # --------------------------------------------------------------------------------------------------------------
 
-__all__ = ['Normalize', 'ToTensor', 'RandomFlip', 'Random90Rotate', 'Resize', 'Pad', 'RandomCrop',
+__all__ = ['Normalize', 'ToTensor', 'RandomFlip', 'Random90Rotate', 'Resize', 'RandomPad', 'RandomCrop',
            'RandomErasing', 'ColorJitter']
 
 
@@ -152,8 +152,9 @@ class Resize(object):
         }
 
 
-class Pad(object):
+class RandomPad(object):
     def __init__(self, size, mean=(0.4914, 0.4822, 0.4465)):
+        size = random.randint(0, size)
         self.size = ((size, size), (size, size))
         self.fill = tuple([int(round(i*255)) for i in mean])
         self.pad = T.Pad(size, fill=self.fill)
